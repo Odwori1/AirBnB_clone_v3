@@ -78,11 +78,71 @@ class TestFileStorage(unittest.TestCase):
     @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
     def test_all_no_class(self):
         """Test that all returns all rows when no class is passed"""
+        state_data = {"name": "Nairobi"}
+        new_state = State(**state_data)
+        models.storage.new(new_state)
+        models.storage.save()
+
+        session= models.storage._DBStorage_session
+
+        all_objects = session.query(State).all()
+
+        self.assertTrue(len(all_objects) > 0)
 
     @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
     def test_new(self):
         """test that new adds an object to the database"""
+        state_data = {"name": "Lagos"}
+        new_state = State(**state_data)
+        models.storage.new(new_state)
+
+        session= models.storage._DBStorage_session
+        retrieved_state = session.query(State).filter_by(id=new_state).first()
+
+        self.assertEqual(retrieved_state.id, new_state.id)
+        self.assertEqual(retrieved_state.name, new_state.name)
+        self.assertIsNone(retrieved_state)
 
     @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
     def test_save(self):
-        """Test that save properly saves objects to file.json"""
+        """Test that save properly saves objects to database"""
+        state_data = {"name": "Casablanca"}
+        new_state = State(**state_data)
+        models.storage.new(new_state)
+        
+        models.storage.save()
+
+        session= models.storage._DBStorage_session
+
+        retrieved_state = session.query(State).filter_by(id=new_state).first()
+
+        self.assertEqual(retrieved_state.id, new_state.id)
+        self.assertEqual(retrieved_state.name, new_state.name)
+        self.assertIsNone(retrieved_state)
+
+
+class TestFileStorageMethods(unittest.TestCase):
+    """Test the DBStorage class"""
+    @unittest.skipIf(os.getenv('HBNB_TYPE_STORAGE') != 'db',
+                     "not testing file storage")
+    def test_get_method(self):
+        stateObj = State(name="Paris")
+        stateObj.save()
+        newUser = User(email="odwori.okuku@gmail.com", password="pwd")
+        newUser.save()
+        self.assertIs(stateObj, models.storage.get("State", stateObj.id))
+        self.assertIs(None, models.storage.get("State", "wrong"))
+        self.assertIs(None, models.storage.get("wrong", "wrong"))
+        self.assertIs(newUser, models.storage.get("User", newUser.id))
+
+    @unittest.skipIf(os.getenv('HBNB_TYPE_STORAGE') != 'db',
+                     "not testing file storage")
+    def test_count_method(self):
+        count = models.storage.count()
+        self.assertEqual(models.storage.count("One"), 0)
+        newState = State(name="Odwori")
+        newState.save()
+        newUser = User(email="odwori.okuku@gmail.com", password="dummypass")
+        newUser.save()
+        self.assertEqual(models.storage.count("State"), count + 1)
+        self.assertEqual(models.storage.count(), count + 2)
